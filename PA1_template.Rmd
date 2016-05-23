@@ -8,18 +8,128 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r}
+activity <- read.csv(file = "activity.csv", header = TRUE)
+head(activity)
+str(activity)
+summary(activity)
 
+```
 
 ## What is mean total number of steps taken per day?
 
+### Histogram with the total number of steps taken per day
 
+```{r}
+tot <- aggregate(steps~date, activity, sum)
+
+library(lattice)
+barchart(steps~date, data = tot)
+
+```
+
+### Table with the mean and median for the total number of steps taken per day
+
+```{r}
+ma <- aggregate(steps~date, activity, mean)
+colnames(ma) <- c("date", "mean_steps")
+
+me <- aggregate(steps~date, activity, median)
+colnames(me) <- c("date", "median_steps")
+
+merge(ma, me, by.x = "date", all.x = TRUE)
+```
 
 ## What is the average daily activity pattern?
 
+### Time series plot of the 5-minute interval and the average number of steps taken, averaged across all days
 
+```{r}
+ts <- aggregate(steps~interval, activity, mean)
+with(ts, plot(interval, steps, type = "l"))
+```
+
+### The 5-minute interval that contains the maximum number of steps is:
+
+```{r}
+maxx <- which(ts$steps == max(ts$steps))
+ts[maxx,1]
+```
 
 ## Imputing missing values
 
+### Total number of rows with missing values are:
+
+```{r}
+comp <- complete.cases(activity)
+activity_complete <- activity[comp,]
+nrow(activity) - nrow(activity_complete)
+```
+
+### Filling in the missing values with the mean of that specific date
+
+```{r}
+new_activity <- activity
+
+for (i in 1:17568){
+  
+  if(is.na(new_activity[i,1])){
+    new_activity[i,1] <- ma[new_activity[i,2],2]
+  }
+}
+head(new_activity)
+```
+
+### Now, with the new data set I will make a histogram of the total number of steps taken each day and calcula the mean and median to see what has changed
+
+```{r}
+tot_new <- aggregate(steps~date, new_activity, sum)
+
+barchart(steps~date, data = tot_new)
+```
+
+We can see that the histogram differ from the previous one, when we counted the missing values.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+### Create a factor variable indicating if a given date is a week day or weekend
+
+```{r}
+week_d <- c("segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira")
+
+for (i in 1:17568){
+  
+  if (weekdays(as.Date(new_activity[i,2])) %in% week_d){
+    new_activity[i,4] <- "weekday"
+  }
+  else{
+    new_activity[i,4] <- "weekend"
+  }
+}
+colnames(new_activity) <- c("steps", "date", "interval", "weekday_or_weekend")
+new_activity$weekday_or_weekend <- as.factor(new_activity$weekday_or_weekend)
+head(new_activity)
+```
+
+### Plot the 5-minute interval and the average number of steps taken, averaged across all week days and weekends
+
+```{r}
+spl <- split(new_activity, new_activity$weekday_or_weekend)
+activity_week <- spl[[1]]
+activity_weekend <- spl[[2]]
+```
+
+For the week days:
+
+```{r}
+averg_week <- aggregate(steps~interval, activity_week, mean)
+with(averg_week, plot(interval, steps, type = "l"))
+```
+
+For the weekends:
+
+```{r}
+averg_weekend <- aggregate(steps~interval, activity_weekend, mean)
+with(averg_weekend, plot(interval, steps, type = "l"))
+```
